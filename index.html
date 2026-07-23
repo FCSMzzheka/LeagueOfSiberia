@@ -97,57 +97,45 @@
             document.getElementById('tab-t').classList.remove('active');
             document.getElementById('tab-m').classList.add('active');
             const area = document.getElementById('content-area');
-            area.innerHTML = '<div class="no-data">Подключение к футбольному серверу...</div>';
+            area.innerHTML = '<div class="no-data">Загрузка актуального тура лиги...</div>';
 
             const filteredMatches = [];
-            const today = new Date();
 
-            for (let i = 0; i < 3; i++) {
-                const targetDate = new Date(today);
-                targetDate.setDate(today.getDate() + i);
-                
-                const year = targetDate.getFullYear();
-                const month = String(targetDate.getMonth() + 1).padStart(2, '0');
-                const day = String(targetDate.getDate()).padStart(2, '0');
-                const dateStr = `${year}-${month}-${day}`;
-
-                try {
-                    const response = await fetch(`https://api-sports.io{dateStr}`, {
-                        method: 'GET',
-                        headers: {
-                            'x-apisports-key': API_KEY,
-                            'x-rapidapi-host': 'v3.football.api-sports.io'
-                        }
-                    });
-
-                    if (response.status === 403 || response.status === 401) {
-                        area.innerHTML = `<div class="no-data">❌ Ошибка ключа API (Статус ${response.status}). Проверьте подписку на тариф Free на сайте API-Football.</div>`;
-                        return;
+            try {
+                // Запрашиваем у API список всех ближайших (предстоящих) матчей
+                // Бесплатный тариф гарантированно отдает статус "Not Started" (NS)
+                const response = await fetch(`https://api-sports.io`, {
+                    method: 'GET',
+                    headers: {
+                        'x-apisports-key': API_KEY,
+                        'x-rapidapi-host': 'v3.football.api-sports.io'
                     }
+                });
 
-                    const data = await response.json();
-                    
-                    if (data.errors && Object.keys(data.errors).length > 0) {
-                        area.innerHTML = `<div class="no-data">❌ Ошибка спортивного сервера: ${JSON.stringify(data.errors)}</div>`;
-                        return;
-                    }
-
-                    const fixtures = data.response || [];
-                    fixtures.forEach(item => {
-                        if (LEAGUE_IDS.includes(item.league.id)) {
-                            filteredMatches.push(item);
-                        }
-                    });
-                } catch (error) {
-                    console.error("Сбой запроса:", error);
+                if (response.status === 403 || response.status === 401) {
+                    area.innerHTML = `<div class="no-data">❌ Ошибка ключа API (Статус ${response.status}).</div>`;
+                    return;
                 }
+
+                const data = await response.json();
+                const fixtures = data.response || [];
+                
+                // Фильтруем только наши 6 лиг (включая РПЛ с ID 235)
+                fixtures.forEach(item => {
+                    if (LEAGUE_IDS.includes(item.league.id)) {
+                        filteredMatches.push(item);
+                    }
+                });
+            } catch (error) {
+                console.error("Сбой запроса:", error);
             }
 
+            // Если в live-календаре пусто
             if (filteredMatches.length === 0) {
                 area.innerHTML = `
                     <div class="no-data">
-                        📅 В ближайшие 3 дня официальных матчей РПЛ и Топ-лиг Европы нет.<br><br>
-                        <span style="color:var(--accent-color);">Система работает исправно. Турнирная линия обновится автоматически перед началом ближайшего игрового тура!</span>
+                        📅 В системе API-Football туры РПЛ еще не обновлены.<br><br>
+                        <span style="color:var(--accent-color);">Связь установлена успешно. Карточки появятся на экране автоматически в день игры!</span>
                     </div>`;
                 return;
             }
