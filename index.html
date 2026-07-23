@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Football Predictor</title>
-    <!-- Подключаем официальный скрипт Telegram WebApp -->
+    <title>Siberia League</title>
     <script src="https://telegram.org"></script>
     <style>
         :root {
@@ -13,131 +12,177 @@
             --text-color: #ffffff;
             --text-muted: #94a3b8;
             --accent-color: #3b82f6;
-            --success-color: #10b981;
+            --border-color: #2d3748;
         }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            margin: 0;
-            padding: 16px;
-            padding-bottom: 80px;
+            font-family: -apple-system, BlinkMacSystemFont, Arial, sans-serif;
+            background-color: var(--bg-color); color: var(--text-color);
+            margin: 0; padding: 16px; padding-bottom: 80px;
         }
-        h2 { font-size: 20px; font-weight: 700; margin-bottom: 20px; text-align: center; }
-        .match-card {
-            background-color: var(--card-bg);
-            border-radius: 12px;
-            padding: 16px;
-            margin-bottom: 12px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        }
+        h2 { font-size: 18px; text-align: center; margin-bottom: 20px; font-weight: 700; letter-spacing: 0.03em; }
+        .league-section { margin-bottom: 24px; }
         .league-title {
             font-size: 12px; color: var(--text-muted); text-transform: uppercase;
-            letter-spacing: 0.05em; margin-bottom: 8px; border-bottom: 1px solid #2d3748; padding-bottom: 4px;
+            font-weight: 700; letter-spacing: 0.05em; margin-bottom: 10px;
+            border-bottom: 1px solid var(--border-color); padding-bottom: 4px;
         }
+        .match-card { background-color: var(--card-bg); border-radius: 12px; padding: 14px; margin-bottom: 10px; }
         .match-row { display: flex; align-items: center; justify-content: space-between; }
-        .team { width: 35%; display: flex; flex-direction: column; align-items: center; text-align: center; }
-        .team-name { font-size: 14px; font-weight: 600; margin-top: 8px; }
+        .team { width: 35%; text-align: center; font-size: 13px; font-weight: 600; }
         .score-selector { width: 30%; display: flex; flex-direction: column; align-items: center; }
-        .time { font-size: 12px; color: var(--accent-color); font-weight: bold; margin-bottom: 6px; }
+        .time { font-size: 12px; color: var(--accent-color); font-weight: 700; margin-bottom: 4px; }
         .controls { display: flex; align-items: center; gap: 8px; }
         .btn-counter {
-            background: #2d3748; border: none; color: white; width: 28px; height: 28px;
-            border-radius: 50%; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+            background: #2d3748; border: none; color: white; width: 26px; height: 26px;
+            border-radius: 50%; font-size: 14px; cursor: pointer; font-weight: bold;
         }
-        .score-val { font-size: 20px; font-weight: 700; min-width: 16px; text-align: center; }
+        .score-val { font-size: 16px; font-weight: 700; min-width: 14px; text-align: center; }
         .btn-predict {
             width: 100%; background-color: var(--accent-color); border: none; color: white;
-            padding: 10px; border-radius: 8px; font-weight: 600; margin-top: 12px; cursor: pointer;
+            padding: 9px; border-radius: 8px; font-size: 13px; font-weight: 600; margin-top: 10px; cursor: pointer;
         }
-        /* Стили вкладок навигации */
+        .leader-row {
+            display: flex; justify-content: space-between; padding: 10px 14px;
+            background-color: var(--card-bg); margin-bottom: 6px; border-radius: 8px; font-size: 13px;
+        }
         .nav-bar {
             position: fixed; bottom: 0; left: 0; right: 0; height: 60px;
-            background-color: var(--card-bg); display: flex; justify-content: space-around;
-            align-items: center; border-top: 1px solid #2d3748;
+            background-color: var(--card-bg); display: flex; justify-content: space-around; align-items: center;
+            border-top: 1px solid var(--border-color);
         }
-        .nav-item { color: var(--text-muted); font-size: 12px; cursor: pointer; text-align: center; }
-        .nav-item.active { color: var(--accent-color); font-weight: bold; }
+        .nav-item { color: var(--text-muted); font-size: 11px; cursor: pointer; text-align: center; font-weight: 500; }
+        .nav-item.active { color: var(--accent-color); font-weight: 700; }
+        .no-data { text-align: center; color: var(--text-muted); margin-top: 40px; font-size: 13px; }
     </style>
 </head>
 <body>
 
     <h2 id="page-title">МАТЧ-ЦЕНТР</h2>
-    <div id="content-area">
-        <!-- Пример карточки матча (В будущем будет загружаться динамически из Python) -->
-        <div class="match-card">
-            <div class="league-title">Российская Премьер-Лига</div>
-            <div class="match-row">
-                <div class="team">
-                    <div class="team-name">Зенит</div>
-                </div>
-                <div class="score-selector">
-                    <div class="time">19:30</div>
-                    <div class="controls">
-                        <button class="btn-counter" onclick="changeScore('home', -1)">-</button>
-                        <span class="score-val" id="score-home">0</span>
-                        <button class="btn-counter" onclick="changeScore('home', 1)">+</button>
-                    </div>
-                    <div style="margin: 4px 0; color: var(--text-muted)">:</div>
-                    <div class="controls">
-                        <button class="btn-counter" onclick="changeScore('away', -1)">-</button>
-                        <span class="score-val" id="score-away">0</span>
-                        <button class="btn-counter" onclick="changeScore('away', 1)">+</button>
-                    </div>
-                </div>
-                <div class="team">
-                    <div class="team-name">Спартак</div>
-                </div>
-            </div>
-            <button class="btn-predict" onclick="sendPrediction(100500)">ПОДТВЕРДИТЬ ПРОГНОЗ</button>
-        </div>
-    </div>
+    <div id="content-area"></div>
 
-    <!-- Нижнее меню навигации -->
     <div class="nav-bar">
-        <div class="nav-item active" onclick="switchTab('matches')">📅 Матчи</div>
-        <div class="nav-item" onclick="switchTab('tables')">📊 Таблицы</div>
-        <div class="nav-item" onclick="switchTab('leagues')">⚙️ Лиги</div>
+        <div id="tab-m" class="nav-item active" onclick="renderMatches()">📅 Матчи</div>
+        <div id="tab-t" class="nav-item" onclick="renderLeaderboards()">📊 Таблицы</div>
     </div>
 
     <script>
-        // Инициализация Telegram WebApp API
         const tg = window.Telegram.WebApp;
-        tg.expand(); // Расширяем приложение на весь экран телефона
+        tg.expand();
 
-        let homeScore = 0;
-        let awayScore = 0;
+        // Извлекаем переданные бэкендом данные из адресной строки сайта
+        const urlParams = new URLSearchParams(window.location.search);
+        let serverData = { matches: [], leaderboards: {}, leagues: {} };
+        
+        try {
+            const rawData = urlParams.get('data');
+            if (rawData) serverData = JSON.parse(rawData);
+        } catch (e) { console.error("Ошибка парсинга данных", e); }
 
-        function changeScore(team, val) {
+        let userScores = {};
+
+        function changeScore(matchId, team, val) {
+            if (!userScores[matchId]) userScores[matchId] = { home: 0, away: 0 };
             if (team === 'home') {
-                homeScore = Math.max(0, homeScore + val);
-                document.getElementById('score-home').innerText = homeScore;
+                userScores[matchId].home = Math.max(0, userScores[matchId].home + val);
+                document.getElementById(`h-${matchId}`).innerText = userScores[matchId].home;
             } else {
-                awayScore = Math.max(0, awayScore + val);
-                document.getElementById('score-away').innerText = awayScore;
+                userScores[matchId].away = Math.max(0, userScores[matchId].away + val);
+                document.getElementById(`a-${matchId}`).innerText = userScores[matchId].away;
             }
         }
 
-        // Функция отправки прогноза обратно в Python-бота
         function sendPrediction(matchId) {
-            const resultData = {
-                action: "predict",
-                match_id: matchId,
-                score: `${homeScore}:${awayScore}`
-            };
-            // Передаем строку с данными в бота и закрываем WebApp
-            tg.sendData(JSON.stringify(resultData));
+            const home = userScores[matchId] ? userScores[matchId].home : 0;
+            const away = userScores[matchId] ? userScores[matchId].away : 0;
+            tg.sendData(JSON.stringify({ action: "predict", match_id: matchId, score: `${home}:${away}` }));
             tg.close();
         }
 
-        function switchTab(tab) {
-            // Логика переключения экранов
-            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-            event.currentTarget.classList.add('active');
-            if (tab === 'matches') document.getElementById('page-title').innerText = "МАТЧ-ЦЕНТР";
-            if (tab === 'tables') document.getElementById('page-title').innerText = "ТАБЛИЦЫ ЛИДЕРОВ";
-            if (tab === 'leagues') document.getElementById('page-title').innerText = "МОИ НАСТРОЙКИ";
+        function renderMatches() {
+            document.getElementById('page-title').innerText = "МАТЧ-ЦЕНТР";
+            document.getElementById('tab-t').classList.remove('active');
+            document.getElementById('tab-m').classList.add('active');
+            
+            const area = document.getElementById('content-area');
+            if (serverData.matches.length === 0) {
+                area.innerHTML = '<div class="no-data">Нет доступных матчей на ближайшие дни.</div>';
+                return;
+            }
+
+            // Группируем игры по чемпионатам
+            const groups = {};
+            serverData.matches.forEach(m => {
+                if (!groups[m.league]) groups[m.league] = [];
+                groups[m.league].push(m);
+            });
+
+            let html = '';
+            // Выводим РПЛ на первом месте, если она есть
+            const sortedLeagues = Object.keys(groups).sort((a, b) => a.includes("Российская") ? -1 : b.includes("Российская") ? 1 : 0);
+            
+            sortedLeagues.forEach(league => {
+                html += `<div class="league-section"><div class="league-title">${league}</div>`;
+                groups[league].forEach(m => {
+                    const localTime = new Date(m.date).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+                    html += `
+                        <div class="match-card">
+                            <div class="match-row">
+                                <div class="team">${m.home}</div>
+                                <div class="score-selector">
+                                    <div class="time">${localTime}</div>
+                                    <div class="controls">
+                                        <button class="btn-counter" onclick="changeScore(${m.id}, 'home', -1)">-</button>
+                                        <span class="score-val" id="h-${m.id}">0</span>
+                                        <button class="btn-counter" onclick="changeScore(${m.id}, 'home', 1)">+</button>
+                                    </div>
+                                    <div style="margin: 2px 0; color: var(--text-muted); font-size:12px;">:</div>
+                                    <div class="controls">
+                                        <button class="btn-counter" onclick="changeScore(${m.id}, 'away', -1)">-</button>
+                                        <span class="score-val" id="a-${m.id}">0</span>
+                                        <button class="btn-counter" onclick="changeScore(${m.id}, 'away', 1)">+</button>
+                                    </div>
+                                </div>
+                                <div class="team">${m.away}</div>
+                            </div>
+                            <button class="btn-predict" onclick="sendPrediction(${m.id})">ПОДТВЕРДИТЬ ПРОГНОЗ</button>
+                        </div>`;
+                });
+                html += '</div>';
+            });
+            area.innerHTML = html;
         }
+
+        function renderLeaderboards() {
+            document.getElementById('page-title').innerText = "ТАБЛИЦЫ ЛИДЕРОВ";
+            document.getElementById('tab-m').classList.remove('active');
+            document.getElementById('tab-t').classList.add('active');
+            
+            const area = document.getElementById('content-area');
+            let html = '';
+            
+            Object.keys(serverData.leaderboards).forEach(lId => {
+                const lName = serverData.leagues[lId] || "Чемпионат";
+                const users = serverData.leaderboards[lId];
+                
+                html += `<div class="league-section"><div class="league-title">${lName}</div>`;
+                if (users.length === 0) {
+                    html += '<div class="no-data" style="margin-top:10px; margin-bottom:20px;">В этой лиге пока нет очков.</div>';
+                } else {
+                    users.forEach((u, index) => {
+                        html += `
+                            <div class="leader-row">
+                                <span><b>${index + 1}.</b> @${u.username}</span>
+                                <span style="color: var(--accent-color); font-weight:700;">${u.points} pts</span>
+                            </div>`;
+                    });
+                }
+                html += '</div>';
+            });
+            area.innerHTML = html;
+        }
+
+        // Стартовый запуск отрисовки матчей
+        renderMatches();
     </script>
 </body>
 </html>
