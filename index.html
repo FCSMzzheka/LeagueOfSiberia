@@ -103,77 +103,95 @@
             tg.close();
         }
 
-        async function loadMatches() {
+ async function loadMatches() {
             document.getElementById('tab-t').classList.remove('active');
             document.getElementById('tab-m').classList.add('active');
             const area = document.getElementById('content-area');
-            area.innerHTML = '<div class="no-data">Загрузка сегодняшних игр...</div>';
+            area.innerHTML = '<div class="no-data">Загрузка расписания на уикенд...</div>';
 
-            // Получаем текущую дату в формате YYYY-MM-DD
-            const todayStr = new Date().toISOString().split('T')[0];
+            const filteredMatches = [];
+            const today = new Date();
 
-            try {
-                const response = await fetch(`https://api-sports.io{todayStr}`, {
-                    method: 'GET',
-                    headers: {
-                        'x-apisports-key': API_KEY,
-                        'x-rapidapi-host': 'v3.football.api-sports.io'
-                    }
-                });
+            // Циклом запрашиваем матчи на 3 дня: сегодня, завтра и послезавтра
+            for (let i = 0; i < 3; i++) {
+                const targetDate = new Date(today);
+                targetDate.setDate(today.getDate() + i);
+                const dateStr = targetDate.toISOString().split('T')[0];
 
-                const data = await response.json();
-                const fixtures = data.response || [];
-                const filtered = fixtures.filter(item => LEAGUE_IDS.includes(item.league.id));
-
-                if (filtered.length === 0) {
-                    area.innerHTML = `<div class="no-data">На сегодня матчей РПЛ и Топ-лиг Европы не запланировано.</div>`;
-                    return;
-                }
-
-                const groups = {};
-                filtered.forEach(item => {
-                    const lName = LEAGUES[item.league.id];
-                    if (!groups[lName]) groups[lName] = [];
-                    groups[lName].push(item);
-                });
-
-                let html = '';
-                const sortedLeagues = Object.keys(groups).sort((a, b) => a.includes("Российская") ? -1 : b.includes("Российская") ? 1 : 0);
-
-                sortedLeagues.forEach(leagueName => {
-                    html += `<div class="league-section"><div class="league-title">${leagueName}</div>`;
-                    groups[leagueName].forEach(m => {
-                        const matchTime = new Date(m.fixture.date).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-                        html += `
-                            <div class="match-card">
-                                <div class="match-row">
-                                    <div class="team">${m.teams.home.name}</div>
-                                    <div class="score-selector">
-                                        <div class="time">${matchTime}</div>
-                                        <div class="controls">
-                                            <button class="btn-counter" onclick="changeScore(${m.fixture.id}, 'home', -1)">-</button>
-                                            <span class="score-val" id="h-${m.fixture.id}">0</span>
-                                            <button class="btn-counter" onclick="changeScore(${m.fixture.id}, 'home', 1)">+</button>
-                                        </div>
-                                        <div style="margin: 2px 0; color: var(--text-muted); font-size:12px;">:</div>
-                                        <div class="controls">
-                                            <button class="btn-counter" onclick="changeScore(${m.fixture.id}, 'away', -1)">-</button>
-                                            <span class="score-val" id="a-${m.fixture.id}">0</span>
-                                            <button class="btn-counter" onclick="changeScore(${m.fixture.id}, 'away', 1)">+</button>
-                                        </div>
-                                    </div>
-                                    <div class="team">${m.teams.away.name}</div>
-                                </div>
-                                <button class="btn-predict" onclick="sendPrediction(${m.fixture.id})">ПОДТВЕРДИТЬ ПРОГНОЗ</button>
-                            </div>`;
+                try {
+                    const response = await fetch(`https://api-sports.io{dateStr}`, {
+                        method: 'GET',
+                        headers: {
+                            'x-apisports-key': API_KEY,
+                            'x-rapidapi-host': 'v3.football.api-sports.io'
+                        }
                     });
-                    html += '</div>';
-                });
-                area.innerHTML = html;
 
-            } catch (error) {
-                area.innerHTML = '<div class="no-data">Ошибка обновления расписания.</div>';
+                    const data = await response.json();
+                    const fixtures = data.response || [];
+                    
+                    // Фильтруем по нашим лигам и добавляем в общий список
+                    fixtures.forEach(item => {
+                        if (LEAGUE_IDS.includes(item.league.id)) {
+                            filteredMatches.push(item);
+                        }
+                    });
+                } catch (error) {
+                    console.error("Ошибка запроса на дату " + dateStr, error);
+                }
             }
+
+            // Если за все 3 дня ничего не нашли
+            if (filteredMatches.length === 0) {
+                area.innerHTML = `<div class="no-data">На ближайшие 3 дня матчей РПЛ и Европы не запланировано.</div>`;
+                return;
+            }
+
+            // Группируем найденные игры по турнирам
+            const groups = {};
+            filteredMatches.forEach(item => {
+                const lName = LEAGUES[item.league.id];
+                if (!groups[lName]) groups[lName] = [];
+                groups[lName].push(item);
+            });
+
+            let html = '';
+            const sortedLeagues = Object.keys(groups).sort((a, b) => a.includes("Российская") ? -1 : b.includes("Российская") ? 1 : 0);
+
+            sortedLeagues.forEach(leagueName => {
+                html += `<div class="league-section"><div class="league-title">${leagueName}</div>`;
+                groups[leagueName].forEach(m => {
+                    const matchTime = new Date(m.fixture.date).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+                    // Форматируем день недели
+                    const matchDay = new Date(m.fixture.date).toLocaleDateString('ru-RU', { weekday: 'short', day: 'numeric', month: 'short' });
+                    
+                    html += `
+                        <div class="match-card">
+                            <div class="match-row">
+                                <div class="team">${m.teams.home.name}</div>
+                                <div class="score-selector">
+                                    <div class="time" style="font-size:10px; color:var(--text-muted);">${matchDay}</div>
+                                    <div class="time">${matchTime}</div>
+                                    <div class="controls">
+                                        <button class="btn-counter" onclick="changeScore(${m.fixture.id}, 'home', -1)">-</button>
+                                        <span class="score-val" id="h-${m.fixture.id}">0</span>
+                                        <button class="btn-counter" onclick="changeScore(${m.fixture.id}, 'home', 1)">+</button>
+                                    </div>
+                                    <div style="margin: 2px 0; color: var(--text-muted); font-size:12px;">:</div>
+                                    <div class="controls">
+                                        <button class="btn-counter" onclick="changeScore(${m.fixture.id}, 'away', -1)">-</button>
+                                        <span class="score-val" id="a-${m.fixture.id}">0</span>
+                                        <button class="btn-counter" onclick="changeScore(${m.fixture.id}, 'away', 1)">+</button>
+                                    </div>
+                                </div>
+                                <div class="team">${m.teams.away.name}</div>
+                            </div>
+                            <button class="btn-predict" onclick="sendPrediction(${m.fixture.id})">ПОДТВЕРДИТЬ ПРОГНОЗ</button>
+                        </div>`;
+                });
+                html += '</div>';
+            });
+            area.innerHTML = html;
         }
 
         function showTables() {
